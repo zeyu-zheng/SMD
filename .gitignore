@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Outputs
+runs/
+runs_*/
+outputs/
+Reasoning/runs/
+Reasoning/runs_*/
+Reasoning/outputs/
+
+# Local/editor
+.DS_Store
+.vscode/
+.idea/
