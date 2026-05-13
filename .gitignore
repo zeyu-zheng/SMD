@@ -8,9 +8,6 @@ __pycache__/
 runs/
 runs_*/
 outputs/
-Reasoning/runs/
-Reasoning/runs_*/
-Reasoning/outputs/
 
 # Local/editor
 .DS_Store

@@ -1,0 +1,30 @@
+model: gpt-5.2-2025-12-11
+reasoning_effort:
+book_md_max_chars: 64000
+
+api:
+  base_url_env: GPT_BASE_URL
+  api_key_env: GPT_API_KEY
+  api_version: "2024-03-01-preview"
+  timeout: 1800
+
+search:
+  attempts: 8
+  verifiers: 5
+  revisions: 3
+
+label:
+  model: gpt-5.2-2025-12-11
+  reasoning_effort:
+
+recall:
+  model: gpt-5.2-2025-12-11
+  reasoning_effort:
+
+rerank:
+  model: gpt-5.5-2026-04-24
+  reasoning_effort: high
+
+reasoning:
+  model: gpt-5.5-2026-04-24
+  reasoning_effort: xhigh

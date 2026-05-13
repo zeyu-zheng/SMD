@@ -14,12 +14,6 @@ Return JSON only, with this schema:
   "fix_instructions": "how to fix if FIXABLE",
   "replan_reason": "why a new route is needed if REPLAN"
 }
-Decision meanings:
-PASS: the proof/counterexample is complete and reliable.
-FIXABLE: the route is basically correct; only local repairs or clearer derivations are needed.
-REPLAN: there is a fatal mathematical gap or the route likely cannot work without a new idea.
-DISPROVED: the conjecture is false and a valid counterexample/disproof is present.
-UNKNOWN: you cannot judge reliably.
 """
 
 REVISER_SYSTEM = """You revise mathematical solutions.

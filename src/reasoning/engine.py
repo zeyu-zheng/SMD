@@ -1,7 +1,9 @@
 import asyncio
 
-from llm import LLMClient
-from prompts import (
+from src.core.config import Config
+from src.core.llm import LLMClient
+from src.core.utils import extract_first_json
+from src.reasoning.prompts import (
     FINALIZER_SYSTEM,
     GENERATOR_SYSTEM,
     REVISER_SYSTEM,
@@ -11,16 +13,7 @@ from prompts import (
     reviser_user,
     verifier_user,
 )
-from utils import (
-    AggregateVerdict,
-    Attempt,
-    Config,
-    Decision,
-    RevisionRecord,
-    RunResult,
-    VerifierVerdict,
-    parse_json_object,
-)
+from src.reasoning.types import AggregateVerdict, Attempt, Decision, RevisionRecord, RunResult, VerifierVerdict
 
 ROUTES = [
     "direct proof",
@@ -55,8 +48,7 @@ class Verifier:
         self.count = count
 
     async def run(self, problem: str, solution: str) -> AggregateVerdict:
-        roles = VERIFIER_ROLES[: self.count]
-        verdicts = await asyncio.gather(*(self._one(problem, solution, role) for role in roles))
+        verdicts = await asyncio.gather(*(self._one(problem, solution, role) for role in VERIFIER_ROLES[: self.count]))
         return self._aggregate(verdicts)
 
     async def _one(self, problem: str, solution: str, role: str) -> VerifierVerdict:
@@ -65,7 +57,7 @@ class Verifier:
             {"role": "user", "content": verifier_user(problem, solution, role)},
         ])
         try:
-            data = parse_json_object(raw)
+            data = extract_first_json(raw) or {}
             decision = data.get("decision", "UNKNOWN")
             if decision not in {"PASS", "FIXABLE", "REPLAN", "DISPROVED", "UNKNOWN"}:
                 decision = "UNKNOWN"
@@ -94,8 +86,7 @@ class Verifier:
             decision = "FIXABLE"
         else:
             decision = "UNKNOWN"
-        summary = "\n".join(f"[{v.decision}] {v.feedback}" for v in verdicts)
-        return AggregateVerdict(decision, verdicts, summary)
+        return AggregateVerdict(decision, verdicts, "\n".join(f"[{v.decision}] {v.feedback}" for v in verdicts))
 
 
 class Reviser:
@@ -130,34 +121,27 @@ class ReasoningEngine:
         self.finalizer = Finalizer(self.llm)
 
     async def solve(self, problem: str) -> RunResult:
-        attempts: list[Attempt] = []
-        failure_memory: list[str] = []
+        attempts = []
+        failure_memory = []
         best_solution = ""
         best_score = -1.0
         max_calls = self.config.search.attempts * (self.config.search.verifiers + self.config.search.revisions + 3)
-
         for attempt_id in range(1, self.config.search.attempts + 1):
             if self.llm.calls >= max_calls:
                 break
-
-            route = ROUTES[(attempt_id - 1) % len(ROUTES)]
-            solution = await self.generator.run(problem, route, failure_memory)
-            attempt = Attempt(attempt_id=attempt_id, route=route)
+            solution = await self.generator.run(problem, ROUTES[(attempt_id - 1) % len(ROUTES)], failure_memory)
+            attempt = Attempt(attempt_id=attempt_id, route=ROUTES[(attempt_id - 1) % len(ROUTES)])
             attempts.append(attempt)
-
             for revision_id in range(self.config.search.revisions + 1):
                 if self.llm.calls >= max_calls:
                     break
-
                 aggregate = await self.verifier.run(problem, solution)
                 attempt.revisions.append(RevisionRecord(revision_id, solution, aggregate))
                 attempt.status = aggregate.decision
-
                 avg_score = sum(v.score for v in aggregate.verdicts) / max(len(aggregate.verdicts), 1)
                 if avg_score > best_score:
                     best_score = avg_score
                     best_solution = solution
-
                 if aggregate.decision == "PASS":
                     final = await self.finalizer.run(problem, solution)
                     final_check = await self.verifier.run(problem, final)
@@ -166,17 +150,13 @@ class ReasoningEngine:
                         return RunResult("SOLVED", final, attempts, best_solution=final)
                     failure_memory.append("Final polished answer failed re-verification: " + final_check.summary[:800])
                     break
-
                 if aggregate.decision == "FIXABLE":
                     solution = await self.reviser.run(problem, solution, aggregate)
                     continue
-
                 if aggregate.decision == "DISPROVED":
                     return RunResult("DISPROVED", solution, attempts, best_solution=solution)
-
                 failure_memory.append(aggregate.summary[:1000])
                 break
-
         if best_solution:
             return RunResult("BEST_EFFORT", best_solution, attempts, best_solution=best_solution)
         return RunResult("NO_RELIABLE_SOLUTION", "No reliable solution was found within the budget.", attempts)
