@@ -10,15 +10,15 @@ DEFAULT_CONFIG = ROOT / "config.yaml"
 
 @dataclass
 class APIConfig:
-    base_url: str | None = None
-    base_url_env: str = "GPT_BASE_URL"
+    responses_base_url: str | None = None
+    responses_base_url_env: str = "GPT_RESPONSES_BASE_URL"
     api_key: str | None = None
     api_key_env: str = "GPT_API_KEY"
     api_version: str = "2024-03-01-preview"
     timeout: float = 1800.0
 
-    def resolved_base_url(self) -> str:
-        return self.base_url or os.environ[self.base_url_env]
+    def resolved_responses_base_url(self) -> str:
+        return self.responses_base_url or os.environ[self.responses_base_url_env]
 
     def resolved_key(self) -> str:
         return self.api_key or os.environ[self.api_key_env]
@@ -35,12 +35,14 @@ class SearchConfig:
 class StageConfig:
     model: str | None = None
     reasoning_effort: str | None = None
+    web_search: bool | None = None
 
 
 @dataclass
 class Config:
     model: str = "gpt-5.5-2026-04-24"
     reasoning_effort: str | None = None
+    web_search: bool = False
     book_md_max_chars: int = 64000
     api: APIConfig = field(default_factory=APIConfig)
     search: SearchConfig = field(default_factory=SearchConfig)
@@ -71,4 +73,5 @@ def stage_config(config: Config, stage: str) -> Config:
         config,
         model=override.model or config.model,
         reasoning_effort=override.reasoning_effort if override.reasoning_effort is not None else config.reasoning_effort,
+        web_search=bool(override.web_search),
     )

@@ -3,7 +3,7 @@ reasoning_effort:
 book_md_max_chars: 64000
 
 api:
-  base_url_env: GPT_BASE_URL
+  responses_base_url_env: GPT_RESPONSES_BASE_URL
   api_key_env: GPT_API_KEY
   api_version: "2024-03-01-preview"
   timeout: 1800
@@ -24,6 +24,7 @@ recall:
 rerank:
   model: gpt-5.5-2026-04-24
   reasoning_effort: high
+  web_search: true
 
 reasoning:
   model: gpt-5.5-2026-04-24
